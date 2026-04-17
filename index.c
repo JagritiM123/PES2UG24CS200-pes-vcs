@@ -30,12 +30,7 @@
 int object_write(int type, const void *data, size_t len, ObjectID *id_out);
 ObjectID oid;
 
-if (object_write(OBJ_BLOB, buffer, size, &oid) != 0) {
-    if (buffer) free(buffer);
-    return -1;
-}
-
-if (buffer) free(buffer);     
+  
 // ─── PROVIDED ────────────────────────────────────────────────────────────────
 
 // Find an index entry by path (linear scan).
@@ -151,32 +146,31 @@ int index_load(Index *index) {
 
     FILE *f = fopen(".pes/index", "r");
     if (!f) {
-        // If file doesn't exist → empty index (IMPORTANT)
+        // No index yet → NOT an error
         return 0;
     }
 
     while (!feof(f)) {
-        IndexEntry entry;
+        IndexEntry *e = &index->entries[index->count];
+
         char hash_hex[65];
 
         if (fscanf(f, "%o %64s %lu %u %511s\n",
-                   &entry.mode,
+                   &e->mode,
                    hash_hex,
-                   &entry.mtime_sec,
-                   &entry.size,
-                   entry.path) != 5) {
+                   &e->mtime_sec,
+                   &e->size,
+                   e->path) != 5) {
             break;
         }
 
-        hex_to_hash(hash_hex, &entry.hash);
-
-        index->entries[index->count++] = entry;
+        hex_to_hash(hash_hex, &e->hash);
+        index->count++;
     }
 
     fclose(f);
     return 0;
 }
-
 // Save the index to .pes/index atomically.
 //
 // HINTS - Useful functions and syscalls:
@@ -187,27 +181,26 @@ int index_load(Index *index) {
 //   - rename                           : atomically moving the temp file over the old index
 //
 // Returns 0 on success, -1 on error.
-int compare_index_entries(const void *a, const void *b) {
-    return strcmp(((IndexEntry *)a)->path, ((IndexEntry *)b)->path);
+
+int compare_entries(const void *a, const void *b) {
+    return strcmp(((IndexEntry*)a)->path, ((IndexEntry*)b)->path);
 }
 
 int index_save(const Index *index) {
 
     Index temp = *index;
-
-    // Sort entries
-    qsort(temp.entries, temp.count, sizeof(IndexEntry), compare_index_entries);
+    qsort(temp.entries, temp.count, sizeof(IndexEntry), compare_entries);
 
     FILE *f = fopen(".pes/index.tmp", "w");
     if (!f) return -1;
 
     for (int i = 0; i < temp.count; i++) {
-        char hash_hex[65];
-        hash_to_hex(&temp.entries[i].hash, hash_hex);
+        char hex[65];
+        hash_to_hex(&temp.entries[i].hash, hex);
 
         fprintf(f, "%o %s %lu %u %s\n",
                 temp.entries[i].mode,
-                hash_hex,
+                hex,
                 temp.entries[i].mtime_sec,
                 temp.entries[i].size,
                 temp.entries[i].path);
@@ -222,25 +215,24 @@ int index_save(const Index *index) {
     return 0;
 }
 
+
+
+
 // Stage a file for the next commit.
 //
 // HINTS - Useful functions and syscalls:
 //   - fopen, fread, fclose             : reading the target file's contents
 //   - object_write                     : saving the contents as OBJ_BLOB
 //   - stat / lstat                     : getting file metadata (size, mtime, mode)
-//   - index_find                       : checking if the file is already staged
-//
+//   - index_find                       : checking if the file is already staged//
 // Returns 0 on success, -1 on error.
-
 int index_add(Index *index, const char *path) {
-    if (index->count < 0) index->count = 0;
-    FILE *f = fopen(path, "rb");
-    if (!f) {
-        perror("error opening file");
-        return -1;
-    }
 
-    // Read file content
+    if (!index || !path) return -1;
+
+    FILE *f = fopen(path, "rb");
+    if (!f) return -1;
+
     fseek(f, 0, SEEK_END);
     size_t size = ftell(f);
     rewind(f);
@@ -248,18 +240,46 @@ int index_add(Index *index, const char *path) {
     void *buffer = NULL;
 
     if (size > 0) {
-    	buffer = malloc(size);
-    if (!buffer) {
-        fclose(f);
+        buffer = malloc(size);
+        if (!buffer) {
+            fclose(f);
+            return -1;
+        }
+
+        if (fread(buffer, 1, size, f) != size) {
+            free(buffer);
+            fclose(f);
+            return -1;
+        }
+    }
+
+    fclose(f);
+
+    ObjectID oid;   // ✅ MUST be here (local)
+
+    if (object_write(OBJ_BLOB, buffer, size, &oid) != 0) {
+        if (buffer) free(buffer);
         return -1;
     }
 
-    if (fread(buffer, 1, size, f) != size) {
-        free(buffer);
-        fclose(f);
-        return -1;
+    if (buffer) free(buffer);
+
+    struct stat st;
+    if (stat(path, &st) != 0) return -1;
+
+    IndexEntry *entry = index_find(index, path);
+
+    if (!entry) {
+        if (index->count >= MAX_INDEX_ENTRIES) return -1;
+        entry = &index->entries[index->count++];
     }
+
+    entry->mode = st.st_mode;
+    entry->hash = oid;
+    entry->mtime_sec = st.st_mtime;
+    entry->size = st.st_size;
+    strcpy(entry->path, path);
+
+    return index_save(index);
 }
 
-fclose(f);
-}
