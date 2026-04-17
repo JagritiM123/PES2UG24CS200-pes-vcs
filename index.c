@@ -14,7 +14,6 @@
 //
 // PROVIDED functions: index_find, index_remove, index_status
 // TODO functions:     index_load, index_save, index_add
-
 #include "index.h"
 #include "pes.h"
 
@@ -22,12 +21,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stddef.h>
-
-#include <sys/stat.h>   
-#include <unistd.h>     
-
+#include <sys/stat.h>
+#include <unistd.h>
 #include <dirent.h>
-  
 // ─── PROVIDED ────────────────────────────────────────────────────────────────
 
 // Find an index entry by path (linear scan).
@@ -176,7 +172,7 @@ int index_load(Index *index) {
 //   - fopen (with "w"), fprintf        : writing to the temporary file
 //   - hash_to_hex                      : converting ObjectID for text output
 //   - fflush, fileno, fsync, fclose    : flushing userspace buffers and syncing to disk
-//   - rename                           : atomically moving the temp file over the old index
+//  - rename                           : atomically moving the temp file over the old index
 //
 // Returns 0 on success, -1 on error.
 
@@ -186,10 +182,7 @@ int compare_entries(const void *a, const void *b) {
 int index_save(const Index *index) {
 
     FILE *f = fopen(".pes/index.tmp", "w");
-    if (!f) {
-        perror("fopen failed");
-        return -1;
-    }
+    if (!f) return -1;
 
     for (int i = 0; i < index->count; i++) {
         char hex[65];
@@ -204,15 +197,11 @@ int index_save(const Index *index) {
     }
 
     fclose(f);
-
-    if (rename(".pes/index.tmp", ".pes/index") != 0) {
-        perror("rename failed");
-        return -1;
-    }
+    rename(".pes/index.tmp", ".pes/index");
 
     return 0;
 }
-
+   
 
 // Stage a file for the next commit.
 //
@@ -225,8 +214,7 @@ int index_save(const Index *index) {
 
 int index_add(Index *index, const char *path) {
 
-    printf("DEBUG: index count = %d\n", index->count);
-     if (!index || !path) return -1;
+    if (!index || !path) return -1;
 
     FILE *f = fopen(path, "rb");
     if (!f) return -1;
@@ -243,14 +231,12 @@ int index_add(Index *index, const char *path) {
     size_t size = (size_t)fsize;
 
     void *buffer = NULL;
-
     if (size > 0) {
         buffer = malloc(size);
         if (!buffer) {
             fclose(f);
             return -1;
         }
-
         if (fread(buffer, 1, size, f) != size) {
             free(buffer);
             fclose(f);
@@ -262,7 +248,7 @@ int index_add(Index *index, const char *path) {
 
     ObjectID oid;
 
-    // IMPORTANT FIX: safe buffer for empty file
+    // SAFE: never pass NULL pointer
     const void *data_ptr = (size > 0) ? buffer : "";
 
     if (object_write(OBJ_BLOB, data_ptr, size, &oid) != 0) {
