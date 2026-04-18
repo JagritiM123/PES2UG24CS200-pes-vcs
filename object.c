@@ -94,7 +94,7 @@ int object_exists(const ObjectID *id) {
 //
 int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out) {
     // TODO: Implement
-    // 1. Determine type string
+    
     const char *type_str;
     switch (type) {
         case OBJ_BLOB:   type_str = "blob";   break;
@@ -103,12 +103,11 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
         default: return -1;
     }
 
-    // 2. Build header: "<type> <size>\0"
+    
     char header[64];
     int header_len = snprintf(header, sizeof(header), "%s %zu", type_str, len);
     header_len++; // include the null terminator as part of the header
 
-    // 3. Allocate buffer for full object (header + data)
     size_t full_len = header_len + len;
     uint8_t *full_object = malloc(full_len);
     if (!full_object) return -1;
@@ -116,10 +115,8 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
     memcpy(full_object, header, header_len);
     memcpy(full_object + header_len, data, len);
 
-    // 4. Compute hash of the full object
     compute_hash(full_object, full_len, id_out);
 
-    // 5. Check if object already exists (deduplication)
     if (object_exists(id_out)) {
         free(full_object);
         return 0;
@@ -131,10 +128,8 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
 
     char shard_dir[512];
     snprintf(shard_dir, sizeof(shard_dir), "%s/%.2s", OBJECTS_DIR, hex);
-    mkdir(shard_dir, 0755); // may already exist, that's fine
-
-    // 7. Write to temporary file
-    char temp_path[512];
+    mkdir(shard_dir, 0755);
+   char temp_path[512];
     snprintf(temp_path, sizeof(temp_path), "%s/tmp_XXXXXX", shard_dir);
     int fd = mkstemp(temp_path);
     if (fd < 0) {
@@ -150,11 +145,10 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
         return -1;
     }
 
-    // 8. fsync to ensure data reaches disk
     fsync(fd);
     close(fd);
 
-    // 9. Rename atomically to final path
+    
     char final_path[512];
     object_path(id_out, final_path, sizeof(final_path));
 
@@ -164,7 +158,6 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
         return -1;
     }
 
-    // 10. fsync the directory to persist the rename
     int dir_fd = open(shard_dir, O_RDONLY | O_DIRECTORY);
     if (dir_fd >= 0) {
         fsync(dir_fd);
