@@ -10,6 +10,7 @@ typedef struct {
     ObjectID hash;
     char name[256];
 } TreeEntry;
+//had to modify the tree structure
 
 typedef struct {
     TreeEntry entries[MAX_TREE_ENTRIES];
