@@ -72,7 +72,6 @@ int commit_parse(const void *data, size_t len, Commit *commit_out) {
 }
 
 // Serialize a Commit struct to the text format.
-// Caller must free(*data_out).
 int commit_serialize(const Commit *commit, void **data_out, size_t *len_out) {
     char tree_hex[HASH_HEX_SIZE + 1];
     char parent_hex[HASH_HEX_SIZE + 1];
