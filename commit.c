@@ -192,6 +192,8 @@ int head_update(const ObjectID *new_commit) {
 //   - head_update       : moves the branch pointer to your new commit
 //
 // Returns 0 on success, -1 on error
+
+//commit_create creates new commit from the current staging area
 int commit_create(const char *message, ObjectID *out_id) {
 
     if (!message || !out_id) return -1;
