@@ -130,6 +130,7 @@ int tree_serialize(const Tree *tree, void **data_out, size_t *len_out) {
 //
 // Returns 0 on success, -1 on error.
 
+//we build the recursive tree
 int build_tree_recursive(Index *index, const char *prefix, ObjectID *out_id) {
 
     Tree tree;
