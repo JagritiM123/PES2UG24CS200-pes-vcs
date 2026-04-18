@@ -88,6 +88,8 @@ static int compare_tree_entries(const void *a, const void *b) {
 // Serialize a Tree struct into binary format for storage.
 // Caller must free(*data_out).
 // Returns 0 on success, -1 on error.
+
+//tree_serialize
 int tree_serialize(const Tree *tree, void **data_out, size_t *len_out) {
     // Estimate max size: (6 bytes mode + 1 byte space + 256 bytes name + 1 byte null + 32 bytes hash) per entry
     size_t max_size = tree->count * 296; 
