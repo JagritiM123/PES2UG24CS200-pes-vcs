@@ -198,20 +198,16 @@ int commit_create(const char *message, ObjectID *out_id) {
 
     if (!message || !out_id) return -1;
 
-    // 1. Build tree from index
     ObjectID tree_id;
     if (tree_from_index(&tree_id) != 0) {
         return -1;
     }
 
-    // 2. Read parent commit (if exists)
     ObjectID parent_id;
     int has_parent = (head_read(&parent_id) == 0);
 
-    // 3. Get author
     const char *author = pes_author();
 
-    // 4. Prepare commit struct
     Commit commit;
     memset(&commit, 0, sizeof(Commit));
 
