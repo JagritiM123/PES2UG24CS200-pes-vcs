@@ -176,6 +176,8 @@ int index_load(Index *index) {
 //
 // Returns 0 on success, -1 on error.
 
+//we have edited the code of index_save via compare_entries
+
 int compare_entries(const void *a, const void *b) {
     return strcmp(((IndexEntry*)a)->path, ((IndexEntry*)b)->path);
 }
@@ -248,7 +250,7 @@ int index_add(Index *index, const char *path) {
 
     ObjectID oid;
 
-    // SAFE: never pass NULL pointer
+   
     const void *data_ptr = (size > 0) ? buffer : "";
 
     if (object_write(OBJ_BLOB, data_ptr, size, &oid) != 0) {
