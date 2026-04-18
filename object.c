@@ -122,7 +122,7 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
         return 0;
     }
 
-    // 6. Create shard directory
+   
     char hex[HASH_HEX_SIZE + 1];
     hash_to_hex(id_out, hex);
 
@@ -192,11 +192,11 @@ int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out
 // The caller is responsible for calling free(*data_out).
 // Returns 0 on success, -1 on error (file not found, corrupt, etc.).
 int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_t *len_out) {
-    // 1. Get file path
+    
     char path[512];
     object_path(id, path, sizeof(path));
 
-    // 2. Open and read entire file
+    
     FILE *fp = fopen(path, "rb");
     if (!fp) return -1;
 
@@ -221,8 +221,6 @@ int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_
         return -1;
     }
     fclose(fp);
-
-    // 3. Verify integrity by recomputing hash
     ObjectID computed_id;
     compute_hash(file_data, file_size, &computed_id);
     if (memcmp(computed_id.hash, id->hash, HASH_SIZE) != 0) {
@@ -230,14 +228,14 @@ int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_
         return -1; // corrupted object
     }
 
-    // 4. Find the null terminator separating header from data
+    
     uint8_t *null_pos = memchr(file_data, '\0', file_size);
     if (!null_pos) {
         free(file_data);
         return -1;
     }
 
-    // 5. Parse type from header
+    
     if (strncmp((char *)file_data, "blob ", 5) == 0) {
         *type_out = OBJ_BLOB;
     } else if (strncmp((char *)file_data, "tree ", 5) == 0) {
@@ -249,8 +247,7 @@ int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_
         return -1;
     }
 
-    // 6. Extract data portion
-    size_t header_len = (null_pos - file_data) + 1; // include the '\0'
+    size_t header_len = (null_pos - file_data) + 1;
     size_t data_len = file_size - header_len;
 
     *data_out = malloc(data_len);
