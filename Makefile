@@ -14,7 +14,7 @@ pes: $(OBJS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # ─── Test binaries ───────────────────────────────────────────────────────────
-
+#added index.o in test_tree
 test_objects: test_objects.o object.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 
